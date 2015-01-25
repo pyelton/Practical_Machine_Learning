@@ -11,12 +11,17 @@ library(caret, quietly = TRUE)
 setwd("~/Dropbox/PEPPERCOPY/Practical_machine_learning")
 
 #Load data files
-train <- read.csv("pml-training.csv", header = TRUE, row.names = 1, colClasses = c(rep("factor",2), rep("numeric",2), rep("factor", 2), rep("character", 153)))
+train <- read.csv("pml-training.csv", header = TRUE, row.names = 1, 
+                  colClasses = c(rep("factor",2), rep("numeric",2), 
+                                 rep("factor", 2), rep("character", 153)))
 
-test <- read.csv("pml-testing.csv", header = TRUE, row.names = 1, colClasses = c(rep("factor",2), rep("numeric",2), rep("factor", 2), rep("character", 153)))
+test <- read.csv("pml-testing.csv", header = TRUE, row.names = 1, 
+                 colClasses = c(rep("factor",2), rep("numeric",2), 
+                                rep("factor", 2), rep("character", 153)))
 ```
 ###Data preprocessing
-I preprocessed the data by removing the time stamps as well as all columns missing the majority of values.
+I preprocessed the data by removing the time stamps as well as all 
+columns missing the majority of values.
 ```{r}
 #Replace empty values with NA
 train[train == ""] <- NA
@@ -34,7 +39,10 @@ tes = as.data.frame(sapply(testing[7:58], as.numeric))
 ftest = cbind(testing[59], tes)
 ```
 ###Creating training and testing data
-I split the 'training' set using createDataPartition, with 0.6, splitting the training set into a (sub)training set and a custom test set.   I set the seed to 333 before splitting the training set for reproducibility.
+I split the 'training' set using createDataPartition, with 0.6, 
+splitting the training set into a (sub)training set and a 
+custom test set.   I set the seed to 333 before splitting the 
+training set for reproducibility.
 
 ```{r}
 #Split the data into training and testing sets within the training set
@@ -83,11 +91,19 @@ plot(features2)
 ```
 
 ###Cross-validation and model fitting
-Then I ran cross validation, 'cv' for 3 subsets of the (sub)training data. I ran train with the gbm, the boosting with trees method, on the (sub)training set. Based on the train results, the in sample accuracy was 0.96. I predicted my custom test set with the model and found out of sample accuracy (based on the confusion matrix) was estimated to be 0.96. Thus the out of sample error was estimated to be 1 – 0.96, 0.04. This model predicted all twenty of the test set classes correctly
+Then I ran cross validation, 'cv' for 3 subsets of the (sub)training data. 
+I ran train with the gbm, the boosting with trees method, on the 
+(sub)training set. Based on the train results, the in sample accuracy was 
+0.96. I predicted my custom test set with the model and found out of sample 
+accuracy (based on the confusion matrix) was estimated to be 0.96. Thus the 
+out of sample error was estimated to be 1 – 0.96, 0.04. This model predicted 
+all twenty of the test set classes correctly
 
 ```{r}
 #Fit a model with all of the possible explanatory variables
-modfit <- train(classe ~ ., data = trainFit, method = "gbm", trControl = trainControl(method = "cv", number = 3), verbose = FALSE)
+modfit <- train(classe ~ ., data = trainFit, method = "gbm", 
+                trControl = trainControl(method = "cv", number = 3), 
+                verbose = FALSE)
 testall <- predict(modfit, testFit)
 confusion <- confusionMatrix(testFit$classe, predict(modfit, testFit))
 #96% out of sample accuracy
@@ -101,8 +117,12 @@ plot(testall ~ testFit$classe, xlab = "Test set class", ylab = "Predicted class"
 ###Alternative methods that were not used to make the final model
 Note that I did examine the data first and tried two alternative methods:
 
-1.    PCA preprocessing to deal with the high correlations of some of the predictor variables to each other. This resulted in a relatively low in sample accuracy 0.690.
-2.	Removal of variables that didn’t seem to predict the classes well, based on featurePlot box plots. I picked ten variables and then ran them in a gbm model. This resulted in an in sample accuracy of 0.8742. 
+1.    PCA preprocessing to deal with the high correlations of some of the 
+predictor variables to each other. This resulted in a relatively low in 
+sample accuracy 0.690.
+2.	Removal of variables that didn’t seem to predict the classes well, 
+based on featurePlot box plots. I picked ten variables and then ran them 
+in a gbm model. This resulted in an in sample accuracy of 0.8742. 
 
 ```{r}
 #Alternative model 1
@@ -111,24 +131,36 @@ Note that I did examine the data first and tried two alternative methods:
 library(Hmisc, quietly = TRUE)
 correlations <- rcorr(as.matrix(trainFit[2:53]), type = "spearman")
 correlations$r[correlations$r > 0.8 & correlations$r  < 1.0]
-#A small subset of 8 variables are highly correlated with one another > 0.8 spearman correlation
+#A small subset of 8 variables are highly correlated with one 
+#another > 0.8 spearman correlation
 
 #So we try PCA to combine these variables 
-preProc <- preProcess(trainFit[,-1], method = "pca", pcaComp=2) #pcaComp number of PCs to compute
+preProc <- preProcess(trainFit[,-1], method = "pca", pcaComp=2) 
+#pcaComp number of PCs to compute
 fitPC <- predict(preProc, trainFit[,-1])
 
 #Predict principal components for training set
-qplot(fitPC[,1],fitPC[,2], col = trainFit$classe, xlab = "PC1", ylab = "PC2")
-modfitPC <- train(trainFit$classe ~ . , data = fitPC, method = "gbm", trControl = trainControl(method = "cv", number = 10), verbose = FALSE)
+qplot(fitPC[,1],fitPC[,2], col = trainFit$classe, xlab = "PC1", 
+      ylab = "PC2")
+modfitPC <- train(trainFit$classe ~ . , data = fitPC, method = "gbm", 
+                  trControl = trainControl(method = "cv", number = 10), 
+                  verbose = FALSE)
 testPC <- predict(preProc, testFit[,-1])
 PCpred <- predict(modfitPC, testPC)
 confPCA <- confusionMatrix(testFit$classe, predict(modfitPC, testPC))
 
 #Alternative model 2
 
-#A subset of ten predictor variables appeared to be important based on featurePlot
-#Fit a model with just the predictor variables identified as important through the featureplot
-modfitsubset <- train(classe ~ yaw_belt + roll_belt + magnet_belt_y + magnet_belt_z + roll_dumbbell + magnet_dumbbell_x + magnet_dumbbell_y + yaw_forearm + magnet_forearm_x, data = trainFit, method = "gbm", trControl = trainControl(method = "cv", number = 3), verbose = FALSE)
+#A subset of ten predictor variables appeared to be important based 
+#on featurePlot
+#Fit a model with just the predictor variables identified as important 
+#through the featureplot
+modfitsubset <- train(classe ~ yaw_belt + roll_belt + magnet_belt_y + 
+                        magnet_belt_z + roll_dumbbell + magnet_dumbbell_x + 
+                        magnet_dumbbell_y + yaw_forearm + magnet_forearm_x, 
+                        data = trainFit, method = "gbm", 
+                        trControl = trainControl(method = "cv", number = 3), 
+                        verbose = FALSE)
 confSubset <- confusionMatrix(testFit$classe, predict(modfitsubset, testFit))
 ```
 
